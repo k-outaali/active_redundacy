@@ -88,7 +88,7 @@ void *redudancy_thread(void *arg){
     if (cont==0)
       pthread_exit(NULL);
     */
-    r->results[id] = r->voters[id](arg);
+    r->results[id] = r->voters[id](r->arg);
     ret = sem_post(&(r->completion_barrier[id]));
     if(ret != 0){
       returncode("sem_post failed", ret);
@@ -126,8 +126,44 @@ int pthread_redundancy_init(struct pthread_redundancy* r, struct pthread_redunda
   return 0;
 }
 
+extern int pthread_redundancy_vote(struct pthread_redundancy* r, int* result){
 
+  int i, ret;
+  int most_freq, max_freq, freqs[r->attr.size];
 
+  for(i = 0; i < r->attr.size; i++){
+    ret = sem_post(&(r->wait_for_barrier[i]));
+    if(ret != 0){
+      returncode("sem_post failed", ret);
+    }
+  }
+
+  for(i = 0; i < r->attr.size; i++){
+    freqs[i] = 0;
+    ret = sem_wait(&(r->completion_barrier[i]));
+    if(ret != 0){
+      returncode("sem_wait failed", ret);
+    }
+  }
+  
+  for (i = 0; i < r->attr.size; i++){
+    for (int j = i + 1; j < r->attr.size; j++){
+      if(r->results[i] == r->results[j]){
+      freqs[i]++;
+      }
+    }
+  }
+  max_freq = freqs[0];
+  most_freq = r->results[0];
+  for(i = 0; i < r->attr.size - 1; i++){
+    if(freqs[i] < freqs[i + 1]){
+      max_freq = freqs[i + 1];
+      most_freq = r->results[i + 1];
+    }
+  }
+  *result = most_freq;
+  return r->attr.size - max_freq;
+}
 
 
 
