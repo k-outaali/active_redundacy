@@ -49,10 +49,10 @@ void* POSIX_Init(void *argument){
  func[0] = sensor1; 
  func[1] = sensor2; 
  func[2] = sensor3;
+
  ret = pthread_redundancy_init(&red, attr, func, NULL);
  if(ret !=0 )
      returncode("pthread_redundancy_init init.c",ret);
-
 
  diff = pthread_redundancy_vote(&red, &my_result);
  if(ret != 0)

@@ -26,6 +26,7 @@ typedef struct pthread_redundancy{
   void*      arg;
   struct     pthread_redundancy_attr attr;
   pthread_t tid[CONFIGURE_REDUNDANCY_MAXIMUM_VOTING];
+  int       cont;
   // Extend this struct if needed! 
 } pthread_redundancy_t;
 

@@ -56,7 +56,7 @@ int pthread_redundancy_destroy(struct pthread_redundancy *r) {
   // Initially, cont=1 and threads are in a while loop until 
   // become cont=1
   //
-  //r->cont=0;
+  r->cont=0;
 
   // Wakeup threads from their private semaphore to allow them
   // to finish
@@ -94,10 +94,10 @@ void *redudancy_thread(void *arg){
     if(ret != 0){
       returncode("sem_wait failed", ret);
     }
-    /*
-    if (cont==0)
+    
+    if (r->cont==0)
       pthread_exit(NULL);
-    */
+    
     r->results[this_id] = r->voters[this_id](r->arg);
     ret = sem_post(&(r->completion_barrier[this_id]));
     if(ret != 0){
@@ -113,7 +113,13 @@ int pthread_redundancy_init(struct pthread_redundancy* r, struct pthread_redunda
   //id = -1;
   r->attr = attr;
   r->arg = arg;
-  //r->cont = 1;
+  r->cont = 1;
+
+  ret = pthread_mutex_init(&id_mutex, NULL);
+  if(ret != 0){
+    returncode("sem_init failed", ret);
+  }
+
   for(i = 0; i < r->attr.size; i++) {
     r->voters[i] = v[i];
 
@@ -133,10 +139,7 @@ int pthread_redundancy_init(struct pthread_redundancy* r, struct pthread_redunda
     }
 
   }
-  ret = pthread_mutex_init(&id_mutex, NULL);
-  if(ret != 0){
-    returncode("sem_init failed", ret);
-  }
+
   return 0;
 }
 
