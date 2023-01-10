@@ -10,7 +10,7 @@
 #include  "returncode.h"			
 
 
-int id = -1;
+pthread_mutex_t id_mutex;
 
 
 int pthread_redundancy_attr_destroy(struct pthread_redundancy_attr *a){
@@ -75,12 +75,22 @@ int pthread_redundancy_destroy(struct pthread_redundancy *r) {
 
 void *redudancy_thread(void *arg){
 
+  static int id = -1;
+  int ret, this_id;
+  ret = pthread_mutex_lock(&id_mutex);
+  if(ret != 0){
+    returncode("sem_init failed", ret);
+  }
   id++;
-  int ret;
+  this_id = id;
+  ret = pthread_mutex_unlock(&id_mutex);
+  if(ret != 0){
+    returncode("sem_init failed", ret);
+  }
   pthread_redundancy_t *r = arg;
 
   while(1) {
-    ret = sem_wait(&(r->wait_for_barrier[id]));
+    ret = sem_wait(&(r->wait_for_barrier[this_id]));
     if(ret != 0){
       returncode("sem_wait failed", ret);
     }
@@ -88,8 +98,8 @@ void *redudancy_thread(void *arg){
     if (cont==0)
       pthread_exit(NULL);
     */
-    r->results[id] = r->voters[id](r->arg);
-    ret = sem_post(&(r->completion_barrier[id]));
+    r->results[this_id] = r->voters[this_id](r->arg);
+    ret = sem_post(&(r->completion_barrier[this_id]));
     if(ret != 0){
       returncode("sem_post failed", ret);
     }
@@ -100,7 +110,7 @@ void *redudancy_thread(void *arg){
 int pthread_redundancy_init(struct pthread_redundancy* r, struct pthread_redundancy_attr attr, voter_t v[], void* arg) {
   
   int i, ret;
-  id = -1;
+  //id = -1;
   r->attr = attr;
   r->arg = arg;
   //r->cont = 1;
@@ -123,12 +133,16 @@ int pthread_redundancy_init(struct pthread_redundancy* r, struct pthread_redunda
     }
 
   }
+  ret = pthread_mutex_init(&id_mutex, NULL);
+  if(ret != 0){
+    returncode("sem_init failed", ret);
+  }
   return 0;
 }
 
-extern int pthread_redundancy_vote(struct pthread_redundancy* r, int* result){
+int pthread_redundancy_vote(struct pthread_redundancy* r, int* result){
 
-  int i, ret;
+  int i, j, ret;
   int most_freq, max_freq, freqs[r->attr.size];
 
   for(i = 0; i < r->attr.size; i++){
@@ -147,9 +161,9 @@ extern int pthread_redundancy_vote(struct pthread_redundancy* r, int* result){
   }
   
   for (i = 0; i < r->attr.size; i++){
-    for (int j = i + 1; j < r->attr.size; j++){
+    for (j = i + 1; j < r->attr.size; j++){
       if(r->results[i] == r->results[j]){
-      freqs[i]++;
+        freqs[i]++;
       }
     }
   }
@@ -162,7 +176,7 @@ extern int pthread_redundancy_vote(struct pthread_redundancy* r, int* result){
     }
   }
   *result = most_freq;
-  return r->attr.size - max_freq;
+  return r->attr.size - max_freq - 1;
 }
 
 

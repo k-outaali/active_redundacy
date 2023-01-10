@@ -1,6 +1,7 @@
 # Prerequisites
 *.d
 main
+o-optimize/
 # Object files
 *.o
 *.ko
